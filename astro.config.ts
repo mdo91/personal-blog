@@ -6,9 +6,14 @@ import remarkCollapse from "remark-collapse";
 import sitemap from "@astrojs/sitemap";
 import { SITE } from "./src/config";
 
+const isGitHubActions = process.env.GITHUB_ACTIONS === "true";
+const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1] ?? "";
+const basePath = isGitHubActions && repoName ? `/${repoName}` : "/";
+
 // https://astro.build/config
 export default defineConfig({
   site: SITE.website,
+  base: basePath,
   integrations: [
     tailwind({
       applyBaseStyles: false,
