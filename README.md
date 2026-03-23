@@ -66,6 +66,10 @@ Write your content in markdown.
 
 This project can be deployed to any static host (Cloudflare Pages, Netlify, Vercel, GitHub Pages, etc.).
 
+- Current production URL: `https://mdo91.github.io/personal-blog/`
+- About page in production: `https://mdo91.github.io/personal-blog/about/`
+- Note: `https://mdo91.github.io/about/` is expected to 404 until a custom/root domain setup is added.
+
 ## Credits
 
 - Original theme base: [pages-cms/astro-blog-template](https://github.com/pages-cms/astro-blog-template)
