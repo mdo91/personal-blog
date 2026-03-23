@@ -17,6 +17,7 @@ const featuredPosts = sortedPosts.filter(({ data }) => data.featured);
 const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
 
 const socialCount = SOCIALS.filter(social => social.active).length;
+const profileImageSrc = `${import.meta.env.BASE_URL}assets/mdo9.jpg`;
 ---
 
 <Layout>
@@ -44,7 +45,7 @@ const socialCount = SOCIALS.filter(social => social.active).length;
       <div class="hero-intro">
         <div class="hero-image-wrap">
           <img
-            src="/assets/mdo9.jpg"
+            src={profileImageSrc}
             alt="Mahmut Aoata profile photo"
             class="hero-image"
             loading="lazy"
