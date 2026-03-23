@@ -8,6 +8,13 @@ export interface Props {
 }
 
 const { href, className, ariaLabel, title, disabled = false } = Astro.props;
+const baseUrlWithSlash = import.meta.env.BASE_URL.endsWith("/")
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+const resolvedHref =
+  href.startsWith("/") && !href.startsWith("//")
+    ? `${baseUrlWithSlash}${href.replace(/^\/+/, "")}`
+    : href;
 ---
 
 {
@@ -22,7 +29,7 @@ const { href, className, ariaLabel, title, disabled = false } = Astro.props;
     </span>
   ) : (
     <a
-      {href}
+      href={resolvedHref}
       class={`group inline-block hover:text-skin-accent ${className}`}
       aria-label={ariaLabel}
       title={title}
