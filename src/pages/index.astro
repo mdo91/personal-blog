@@ -23,7 +23,7 @@ const socialCount = SOCIALS.filter(social => social.active).length;
   <Header />
   <main id="main-content">
     <section id="hero">
-      <h1>Mingalaba</h1>
+      <h1>Heyy 👋</h1>
       <a
         target="_blank"
         href="/rss.xml"
@@ -41,30 +41,35 @@ const socialCount = SOCIALS.filter(social => social.active).length;
         <span class="sr-only">RSS Feed</span>
       </a>
 
-      <p>
-        AstroPaper is a minimal, responsive, accessible and SEO-friendly Astro
-        blog theme. This theme follows best practices and provides accessibility
-        out of the box. Light and dark mode are supported by default. Moreover,
-        additional color schemes can also be configured.
-      </p>
-      <p>
-        Read the blog posts or check
-        <LinkButton
-          className="underline decoration-dashed underline-offset-4 hover:text-skin-accent"
-          href="https://github.com/satnaing/astro-paper#readme"
-        >
-          README
-        </LinkButton> for more info.
-      </p>
-      {
-        // only display if at least one social link is enabled
-        socialCount > 0 && (
-          <div class="social-wrapper">
-            <div class="social-links">Social Links:</div>
-            <Socials />
-          </div>
-        )
-      }
+      <div class="hero-intro">
+        <div class="hero-image-wrap">
+          <img
+            src="/assets/mdo9.jpg"
+            alt="Mahmut Aoata profile photo"
+            class="hero-image"
+            loading="lazy"
+          />
+        </div>
+        <div class="hero-text">
+          <p>
+            This is Mahmut, B.S and M.S in Software Engineering, I worked as
+            Mobile App Engineer for different companies in different domains
+            such as fintech and aerospace (eVTOL). Now I'm working on building
+            my startup 👨🏻‍💻. Welcome to my personal blog where I share
+            my technical expertise and knowlege, if you have any question,
+            please feel free to reach out ;), Peace ✌️
+          </p>
+          {
+            // only display if at least one social link is enabled
+            socialCount > 0 && (
+              <div class="social-wrapper">
+                <div class="social-links">Social Links:</div>
+                <Socials />
+              </div>
+            )
+          }
+        </div>
+      </div>
     </section>
 
     <Hr />
@@ -140,6 +145,18 @@ const socialCount = SOCIALS.filter(social => social.active).length;
   }
   #hero p {
     @apply my-2;
+  }
+  .hero-intro {
+    @apply mt-4 grid grid-cols-1 gap-6 sm:grid-cols-[180px_1fr] sm:items-start;
+  }
+  .hero-image-wrap {
+    @apply mx-auto h-40 w-40 overflow-hidden rounded-full border-2 border-skin-line;
+  }
+  .hero-image {
+    @apply h-full w-full object-cover;
+  }
+  .hero-text {
+    @apply min-w-0;
   }
   .social-wrapper {
     @apply mt-4 flex flex-col sm:flex-row sm:items-center;
