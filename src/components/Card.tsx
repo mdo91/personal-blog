@@ -10,6 +10,13 @@ export interface Props {
 
 export default function Card({ href, frontmatter, secHeading = true }: Props) {
   const { title, pubDatetime, modDatetime, description } = frontmatter;
+  const baseUrlWithSlash = import.meta.env.BASE_URL.endsWith("/")
+    ? import.meta.env.BASE_URL
+    : `${import.meta.env.BASE_URL}/`;
+  const resolvedHref =
+    href && href.startsWith("/") && !href.startsWith("//")
+      ? `${baseUrlWithSlash}${href.replace(/^\/+/, "")}`
+      : href;
 
   const headerProps = {
     style: { viewTransitionName: slugifyStr(title) },
@@ -19,7 +26,7 @@ export default function Card({ href, frontmatter, secHeading = true }: Props) {
   return (
     <li className="my-6">
       <a
-        href={href}
+        href={resolvedHref}
         className="inline-block text-lg font-medium text-skin-accent decoration-dashed underline-offset-4 focus-visible:no-underline focus-visible:underline-offset-0"
       >
         {secHeading ? (
