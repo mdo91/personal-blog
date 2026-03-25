@@ -1,7 +1,6 @@
 ---
 import Hr from "./Hr.astro";
 import Socials from "./Socials.astro";
-import { SITE } from "@config";
 
 const currentYear = new Date().getFullYear();
 
@@ -21,7 +20,6 @@ const { noMarginTop = false } = Astro.props;
       <span class="separator">&nbsp;|&nbsp;</span>
       <span>All rights reserved.</span>
     </div>
-    <a class="live-site-link" href={SITE.website}>Live site</a>
   </div>
 </footer>
 
@@ -43,8 +41,5 @@ const { noMarginTop = false } = Astro.props;
   }
   .separator {
     @apply hidden sm:inline;
-  }
-  .live-site-link {
-    @apply my-1 text-sm underline decoration-dashed underline-offset-4 hover:text-skin-accent;
   }
 </style>
