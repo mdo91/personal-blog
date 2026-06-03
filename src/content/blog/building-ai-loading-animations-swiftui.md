@@ -42,50 +42,71 @@ A gradient band sweeps across text. Depending on configuration, the effect can:
 - **Fill the glyphs** with a moving gradient (Grok / ChatGPT style)
 - **Highlight secondary gray text** with a soft white band (summarizing / processing labels)
 
-### Core idea: mask a moving gradient with text
+### The `ShimmeringText` view structure
 
-SwiftUI doesn’t expose CSS-style `background-clip: text`. The equivalent pattern is:
-
-1. Draw `Text` (optionally with a base color)
-2. Overlay a `LinearGradient`
-3. **Mask** the overlay with identical `Text` so color only appears inside the glyphs
+The full component wires timing, layout, and rendering together:
 
 ```swift
-Text(text)
-    .font(font)
-    .foregroundColor(textColor)
-    .overlay(
-        GeometryReader { geometry in
-            shimmerGradient(in: geometry, phase: phase)
-        }
-        .mask(
+struct ShimmeringText: View {
+    let text: String
+    var font: Font = .system(.title2, design: .rounded).weight(.bold)
+    var textColor: Color = .clear
+    var gradientColors: [Color] = [.blue, .purple, .pink, .blue]
+    var duration: TimeInterval = 2.0
+    var repeatDelay: TimeInterval = 0
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var usesBaseTextColor: Bool {
+        textColor != .clear
+    }
+
+    var body: some View {
+        TimelineView(.animation) { context in
+            let phase = phase(at: context.date)
+
             Text(text)
                 .font(font)
-        )
-        .blendMode(usesBaseTextColor ? .plusLighter : .normal)
-    )
-```
-
-- **`textColor: .clear`** → only the gradient is visible (full-fill mode)
-- **`textColor: .secondary`** → gray label stays visible; the overlay adds a highlight (overlay mode)
-- **`.plusLighter`** → brightens the base text where the highlight passes, instead of replacing it
-
-### Driving animation with `TimelineView`
-
-Instead of resetting `@State` each cycle, phase is computed from the current time:
-
-```swift
-TimelineView(.animation) { context in
-    let phase = phase(at: context.date)
-    // ... render text + gradient at `phase`
+                .foregroundColor(textColor)
+                .fixedSize(horizontal: false, vertical: true)
+                .overlay(
+                    GeometryReader { geometry in
+                        shimmerGradient(in: geometry, phase: phase)
+                    }
+                    .mask(
+                        Text(text)
+                            .font(font)
+                            .fixedSize(horizontal: false, vertical: true)
+                    )
+                    .blendMode(usesBaseTextColor ? .plusLighter : .normal)
+                )
+        }
+    }
+    // shimmerGradient, phase(at:), overlayHighlightColors …
 }
 ```
 
-Phase goes from `0 → 1` during the sweep, then holds at `0` during an optional pause:
+**Why each piece matters:**
+
+| Piece | Role |
+|---|---|
+| `TimelineView(.animation)` | Recomputes `phase` every frame from wall-clock time — no `@State` timer loops |
+| `textColor` + `usesBaseTextColor` | Switches between full gradient fill (`.clear`) and overlay highlight (e.g. `.secondary`) |
+| `GeometryReader` | Supplies the **measured text width** so offset math matches real glyph bounds |
+| Duplicate `Text` in `.mask()` | Clips the gradient to letter shapes only (SwiftUI’s text-mask pattern) |
+| `.fixedSize(horizontal: false, vertical: true)` | Keeps mask and base text the same size when labels wrap to multiple lines |
+| `.blendMode(.plusLighter)` | In overlay mode, **adds** light on top of gray text instead of painting opaque color |
+
+SwiftUI has no `background-clip: text` like CSS. The mask is what makes color appear *inside* the glyphs.
+
+### Driving animation with `phase(at:)`
 
 ```swift
+/// Returns 0→1 during the sweep, then holds at 0 during `repeatDelay` (rest position).
 private func phase(at date: Date) -> CGFloat {
     let cycleLength = duration + repeatDelay
+    guard cycleLength > 0 else { return 0 }
+
     let cyclePosition = date.timeIntervalSinceReferenceDate
         .truncatingRemainder(dividingBy: cycleLength)
 
@@ -95,44 +116,138 @@ private func phase(at date: Date) -> CGFloat {
 }
 ```
 
-**Why hold at `0` during `repeatDelay`?**  
-At rest, the highlight band sits off the text. When the next sweep starts, motion continues from the same visual state — no jarring jump from “end position” back to “start position”.
+Think of one cycle as two segments:
 
-### Two gradient modes
-
-#### Full-fill mode (Grok, ChatGPT)
-
-Used when `textColor == .clear`. A wide gradient slides across the text bounds:
-
-```swift
-LinearGradient(
-    colors: gradientColors,
-    startPoint: .leading,
-    endPoint: .trailing
-)
-.frame(width: width * 3, height: geometry.size.height, alignment: .leading)
-.offset(x: -width * 2 + phase * width * 2)
+```
+|←—— duration (phase 0→1) ——→|← repeatDelay (phase = 0) →|
 ```
 
-The gradient is **3× text width** and offset so it always covers the glyphs during the sweep.
+- During **`duration`**, `phase` linearly goes from `0` to `1` — that drives the gradient sweep.
+- During **`repeatDelay`**, `phase` stays at `0` — the highlight rests **off-screen left**, so the next sweep starts from the same visual state (no snap).
 
-#### Overlay mode (summarizing, processing)
+`truncatingRemainder(dividingBy:)` loops the timeline forever without resetting views.
 
-Used when a base text color is set. A **narrow highlight band** travels across:
+### Deep dive: `shimmerGradient`
+
+This is the heart of the effect. It receives a `GeometryProxy` (text bounds) and the current `phase`, then builds **one of two** moving gradients:
 
 ```swift
-let bandWidth = max(width * 0.6, 24)
+@ViewBuilder
+private func shimmerGradient(in geometry: GeometryProxy, phase: CGFloat) -> some View {
+    let width = geometry.size.width
 
-LinearGradient(
-    colors: overlayHighlightColors,  // [.clear, white peak, .clear]
-    startPoint: .leading,
-    endPoint: .trailing
-)
-.frame(width: bandWidth, height: geometry.size.height, alignment: .leading)
-.offset(x: -bandWidth + phase * (width + bandWidth))
+    if usesBaseTextColor {
+        let bandWidth = max(width * 0.6, 24)
+
+        LinearGradient(
+            colors: overlayHighlightColors,
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .frame(width: bandWidth, height: geometry.size.height, alignment: .leading)
+        .offset(x: -bandWidth + phase * (width + bandWidth))
+    } else {
+        LinearGradient(
+            colors: gradientColors,
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .frame(width: width * 3, height: geometry.size.height, alignment: .leading)
+        .offset(x: -width * 2 + phase * width * 2)
+    }
+}
 ```
 
-At `phase = 0` and `phase = 1`, the band sits fully off the text — so the loop is seamless.
+`@ViewBuilder` lets the function return different gradient configurations from one place. The branch is controlled by **`usesBaseTextColor`** (`textColor != .clear`).
+
+---
+
+#### Branch A — Overlay highlight mode (`usesBaseTextColor == true`)
+
+Used for calm status labels: gray `.secondary` text with a soft white band passing over it (summarizing / processing).
+
+**Gradient shape** — a narrow band, not a full rainbow:
+
+```swift
+private var overlayHighlightColors: [Color] {
+    let peak = colorScheme == .dark
+        ? Color.white.opacity(0.35)
+        : Color.white.opacity(0.35)
+    return [.clear, peak, .clear]
+}
+```
+
+`[.clear, peak, .clear]` creates a smooth spotlight: transparent edges, bright center. The peak opacity is tuned for both light and dark mode (here `0.35` on white).
+
+**Band width** — `max(width * 0.6, 24)`:
+
+- On long strings, the highlight is ~60% of text width (visible sweep).
+- On short labels (“Thinking…”), minimum `24pt` so the band never looks like a tiny dot.
+
+**Offset math** — `offset(x: -bandWidth + phase * (width + bandWidth))`:
+
+| `phase` | `x` offset | Visual |
+|---|---|---|
+| `0` | `-bandWidth` | Band fully **left** of text (hidden) |
+| `0.5` | `width/2 - bandWidth/2` | Band crosses **center** |
+| `1` | `width` | Band fully **right** of text (hidden) |
+
+At both endpoints the band is off the glyphs → **seamless loop** when `repeatDelay` holds `phase` at `0`.
+
+Combined with `.blendMode(.plusLighter)`, the band **brightens** existing gray pixels rather than replacing them — closer to native iOS skeleton/shimmer on secondary labels.
+
+---
+
+#### Branch B — Full-fill mode (`textColor == .clear`)
+
+Used for Grok-style (colorful) and ChatGPT-style (monochrome) “thinking” labels where the **gradient is the text**.
+
+**Wider gradient** — `frame(width: width * 3)`:
+
+The gradient is three times the text width so a multi-stop palette (blue → purple → pink → blue) always covers every glyph during the sweep, even at the edges.
+
+**Offset math** — `offset(x: -width * 2 + phase * width * 2)`:
+
+| `phase` | `x` offset | Visual |
+|---|---|---|
+| `0` | `-2×width` | Gradient parked left; only the **right third** may clip into the mask |
+| `0.5` | `-width` | Gradient centered on text |
+| `1` | `0` | Gradient shifted right; sweep completes |
+
+The total travel distance is `2×width`, matching a full left-to-right pass across the text box. Because the gradient strip is `3×width` wide, there is no empty gap inside the mask mid-animation.
+
+**Blend mode** — `.normal` (default): the masked gradient *is* the visible text color; no base layer underneath.
+
+---
+
+#### Why `GeometryReader` wraps only the gradient
+
+```swift
+.overlay(
+    GeometryReader { geometry in
+        shimmerGradient(in: geometry, phase: phase)
+    }
+    .mask(Text(text) …)
+)
+```
+
+`Text` sizes itself to its content. The overlay does not automatically inherit that size for layout purposes — `GeometryReader` expands to fill the text’s laid-out frame and exposes `geometry.size.width`. Without it, you would be guessing widths and the shimmer would desync on different strings or Dynamic Type sizes.
+
+---
+
+#### End-to-end data flow (one frame)
+
+```
+context.date
+    → phase(at:) → CGFloat 0…1
+    → shimmerGradient(geometry, phase)
+        → LinearGradient + frame + offset
+    → .mask(Text)  → clip to glyphs
+    → .blendMode   → plusLighter or normal
+    → composited on base Text
+```
+
+Every frame, `TimelineView` repeats this pipeline. Changing `duration`, `repeatDelay`, `gradientColors`, or `textColor` swaps behavior without touching the animation engine.
 
 ### Preset wrappers
 
@@ -192,7 +307,19 @@ ShimmeringText(
 )
 ```
 
-Typography follows iOS HIG: `.subheadline` with `.regular` or `.medium` weight, `Color.secondary` for muted status copy.
+Typography follows iOS HIG via the `ShimmeringText` extension — shared fonts and timing constants so presets stay consistent:
+
+```swift
+extension ShimmeringText {
+    static let statusLabelColor = Color.secondary
+    static let calmStatusFont: Font = .subheadline.weight(.regular)
+    static let thinkingLabelFont: Font = .subheadline.weight(.medium)
+    static let prominentLabelFont: Font = .system(.headline, design: .rounded).weight(.semibold)
+    static let neutralStatusDuration: TimeInterval = 2.0
+    static let neutralStatusRepeatDelay: TimeInterval = 0.5
+    // …
+}
+```
 
 ### Shimmer tuning cheat sheet
 
