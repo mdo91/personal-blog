@@ -2,7 +2,7 @@ import type { Site, SocialObjects } from "./types";
 
 export const SITE: Site = {
   website: "https://mdo91.github.io/personal-blog/", // temporary Pages URL until custom domain is linked
-  author: "Sat Naing",
+  author: "Mahmut Aoata",
   desc: "A minimal, responsive and SEO-friendly Astro blog theme.",
   title: "Mahmut Aoata",
   ogImage: "astropaper-og.jpg",
