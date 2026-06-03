@@ -1,7 +1,7 @@
 ---
 title: Building AI-Style Loading Animations in SwiftUI
 description: Shimmer text and a worm-style dot grid from the AI Animation Demo iOS app, with SwiftUI code walkthroughs.
-pubDatetime: 2026-03-25T12:00:00Z
+pubDatetime: 2026-06-03T15:10:00Z
 tags:
   - swiftui
   - ios
